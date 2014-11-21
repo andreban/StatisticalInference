@@ -1,0 +1,134 @@
+---
+title: "The effects of Vitamin C on Guinea Pigs Tooth Length"
+author: "Andre Bandarra"
+date: "21-11-2014"
+output: pdf_document
+---
+The response is the length of odontoblasts (teeth) in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid).
+
+The data frame has 60 observations on 3 variables. len, is the Tooth length, supp is the Supplement type (OC for Orange Juice and VC for Ascorbic Acid) and dose is the dose in milligrams.
+
+Exploratory Analysis
+====================
+
+```{r}
+    data(ToothGrowth)
+
+    means <- aggregate(len ~ supp+dose, data=ToothGrowth, FUN=mean)
+    standardDeviations <- aggregate(len ~ supp+dose, data=ToothGrowth, FUN=sd)
+    meansAndStdDeviations <- merge(means,standardDeviations, by=c("supp","dose"))
+    colnames(meansAndStdDeviations) <- c("Supplement", "Dose", "Mean Length", "Std Dev Length")        
+```
+
+```{r, results="asis"}
+    library(pander)
+    pandoc.table(meansAndStdDeviations , style="rmarkdown", split.tables=900, caption="Tooth Lengths", justify="left" , round=2)
+```
+
+Looking at the means and standard deviations, it looks like Orange Juice improves Tooth Length more than Ascorbit Acid, on lower doses. But on 2mg doses, they are almost the same.
+
+
+```{r}
+library(ggplot2)
+qplot(x=dose, y=len, data=ToothGrowth) + geom_smooth(method="lm", se=T) + facet_grid(supp ~ .)
+```
+
+The graphic above shows that for Both Orange Juice and Ascorbic Acid, bigger doses produces bigger teeth.
+
+
+Tests
+=====
+
+Testing if Orange Juice has more influence on Tooth Growth than Acid Ascorbic (OJ > OC)
+```{r, results="asis"}
+test <- t.test(len ~ supp, data=ToothGrowth, var.equal=F, alternative="g")
+table <- data.frame(test$statistic, test$p.value, test$conf.int[1], test$conf.int[2])
+colnames(table) <- c("Statistic", "P-Value", "Min Interval", "Max Interval")
+rownames(table) <- c("")
+pandoc.table(table , style="rmarkdown", split.tables=900, caption="OJ > OC in general", justify="left" , round=5)
+```
+
+With a P-Value of ```r test$p.value```, and a confidence interval that is above zero, we can accept the hipotesis that Orange Juice has more influence on Tooth Growth than Ascorbic Acid.
+
+
+
+Now we will test if  lower dosages have less effect on tooth length than higher dosages. (0.5mg < 1.0Mg, 1.0mg < 2.0mg and 0.5mg < 2.0mg)
+```{r,results="asis"}
+test05s10 <- t.test(len ~ dose, data=subset(ToothGrowth, dose %in% c(1.0, 0.5)), var.equal=T, alternative="l")
+test10s20 <- t.test(len ~ dose, data=subset(ToothGrowth, dose %in% c(1.0, 2.0)), var.equal=T, alternative="l")
+test05s20 <- t.test(len ~ dose, data=subset(ToothGrowth, dose %in% c(0.5, 2.0)), var.equal=T, alternative="l")
+table <- data.frame(c(test05s10$statistic,test10s20$statistic,test05s20$statistic),
+                    c(test05s10$p.value,test10s20$p.value,test05s20$p.value),
+                    c(test05s10$conf.int[1],test10s20$conf.int[1],test05s20$conf.int[1]),
+                    c(test05s10$conf.int[2],test10s20$conf.int[2],test05s20$conf.int[2]))
+
+colnames(table) <- c("Statistic", "P-Value", "Min Interval", "Max Interval")
+rownames(table) <- c("0.5 mg < 1.0mg", "1.0 mg < 2.0mg","0.5mg < 2.0 mg")
+pandoc.table(table , style="rmarkdown", split.tables=900, caption="Comparing different doses", justify="left" , round=2)
+```
+
+
+With all P-Values close to Zero, and all the intervals below 0, we can accept the hipotesis that, in general, larger doses have influence on tooth length.
+
+
+Let's test there is a difference between Ascorbic Acid and Orange Juice, for each difference dosage. 
+```{r,results="asis"}
+test05 <- t.test( len ~ supp, var.equal=T, subset(ToothGrowth, dose %in% c(0.5)), alternative = "g")
+test10 <- t.test( len ~ supp, var.equal=T, subset(ToothGrowth, dose %in% c(1)), alternative = "g")
+test20 <- t.test( len ~ supp, var.equal=T, subset(ToothGrowth, dose %in% c(2)), alternative = "g")
+table <- data.frame(c(test05$statistic,test10$statistic,test20$statistic),
+                    c(test05$p.value,test10$p.value,test20$p.value),
+                    c(test05$conf.int[1],test10$conf.int[1],test20$conf.int[1]),
+                    c(test05$conf.int[2],test10$conf.int[2],test20$conf.int[2]))
+
+colnames(table) <- c("Statistic", "P-Value", "Min Interval", "Max Interval")
+rownames(table) <- c("0.5 mg", "1.0 mg","2.0 mg")
+pandoc.table(table , style="rmarkdown", split.tables=900, caption="Testing doses influence", justify="left" , round=2)
+
+```
+
+Doses of 0.5mg and 1.0mg have P-Value close to zero, with intervals above zero. So we can make the conclusion that for these doses, Orange Juice has more influence on Tooth length than Ascorbic Acide. But when the dose reaches 2.0mg, we get a P-Value of ```r round(test20$p.value, 2)``, and a confidence interval that includes zero. So we fail on that hipotesis, and can't prove that on a dosage of 2.0 mg, Orange Juice has more influence on tooth growth than Ascorbic Acid.
+
+```{r, results="asis"}
+
+oj05v10 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==0.5], 
+                  ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==1.0], 
+                  alternative = "l")
+
+oj10v20 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==1.0],
+                  ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==2.0],
+                  alternative = "l")
+
+oj05v20 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==0.5],
+                  ToothGrowth$len[ToothGrowth$supp == 'OJ' & ToothGrowth$dose==2.0],
+                  alternative = "l")
+
+
+vc05v10 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==0.5], 
+                  ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==1.0],
+                  alternative = "l")
+
+vc10v20 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==1.0], 
+                  ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==2.0],
+                  alternative = "l")
+
+vc05v20 <- t.test(ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==0.5],
+                  ToothGrowth$len[ToothGrowth$supp == 'VC' & ToothGrowth$dose==2.0], 
+                  alternative = "l")
+
+table <- data.frame(c(oj05v10$statistic,oj10v20$statistic,oj05v20$statistic, vc05v10$statistic, vc10v20$statistic, vc05v20$statistic),
+                    c(oj05v10$p.value,oj10v20$p.value,oj05v20$p.value, vc05v10$p.value, vc10v20$p.value, vc05v20$p.value),
+                    c(oj05v10$conf.int[1],oj10v20$conf.int[1],oj05v20$conf.int[1],
+                      vc05v10$conf.int[1], vc10v20$conf.int[1], vc05v20$conf.int[1]),
+                    c(oj05v10$conf.int[2],oj10v20$conf.int[2],oj05v20$conf.int[2], 
+                      vc05v10$conf.int[2], vc10v20$conf.int[2], vc05v20$conf.int[2]))
+
+colnames(table) <- c("Statistic", "P-Value", "Min Interval", "Max Interval")
+rownames(table) <- c("0.5mg OJ < 1.0mg OJ", "1.0mg OJ < 2.0mg OJ","0.5mg OJ < 2.0mg OJ",
+                     "0.5mg VC < 1.0mg VC", "1.0mg VC < 2.0mg VC", "0.5mg VC < 2.0mg VC")
+pandoc.table(table , style="rmarkdown", split.tables=900, caption="OJ > OC on different doses", justify="left" , round=2)
+
+```
+
+The table above, shows that for both OJ and VC, when compared independently, hava P-Values close to zero with negative intervals, showing that larger doses influence on tooth length.
+

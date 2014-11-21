@@ -1,0 +1,69 @@
+---
+title: "Comparing Theoretical and Simulated Mean and Standard Deviations from a Exponential Distribution"
+author: "Andre Bandarra"
+date: "21-11-2014"
+output: pdf_document
+---
+
+
+Exploring the population
+=======================
+
+On a exponention distribution, the theoretical mean is 1/lambda. The theoretical standard deviation is also 1/lambda. We will usa a lambda of 0.2 for the simulations.
+
+```{r}
+set.seed(18091979)
+lambda <- 0.2;
+theoreticalPopulationMean <- 1/lambda;
+theoreticalPopulationStdDev <- 1/lambda;
+
+randomexp <- rexp(1000, lambda)
+simulatedPopulationmean <- mean(randomexp)
+simulatedPopulationStddev <- sd(randomexp)
+```
+
+
+The population mean is ```r simulatedPopulationmean```, which is very close to the theoretical mean of ```r theoreticalPopulationMean```. The simulated standard deviation is ```r simulatedPopulationStddev```, which is also very close to the theoretical standard deviation of ```r theoreticalPopulationStdDev```.
+
+
+Exploring a sample mean and standard deviation.
+==============================================
+
+The mean for a sample is, theoretically, the same as the population mean. The theoretical standard deviation for the sample is the stddev/sqrt(n), where n is the sample size. 
+
+Lets simulate taking the means for 1000 samples of size 40 and compare it to the theoretical mean and the theoretical mean standard deviation.
+
+```{r}
+library(ggplot2)
+
+sampleSize <- 40;
+theoreticalSampleStdDev <- 1/lambda/sqrt(sampleSize);
+
+mns = NULL
+for (i in 1 : 1000) mns = c(mns, mean(rexp(sampleSize,lambda)))
+
+simulatedMeansMean <- mean(mns)
+simulatedmeansStandardDeviation <- sd(mns)
+
+
+```
+
+The simulated mean for the 1000 means of 40 samples is ```r simulatedMeansMean```, which is close to the expected mean of ```r simulatedPopulationmean```. The standard deviation for those samples is ```r simulatedmeansStandardDeviation```, which is also close to the expected value of ```r theoreticalSampleStdDev ```
+
+
+Checking if the means distribution is normal.
+```{r}
+
+ggplot(data=data.frame(mns), aes(x=mns)) +
+    geom_histogram(aes(y=..density..), binwidth= 0.1, fill="white", colour="black") +
+    stat_function(fun=dnorm, colour="red", size=1, 
+                  args=list(mean = 5,sd = 1/(lambda)*(1/sqrt(40)))) +
+    geom_density(colour="blue")
+
+
+shapiro <- as.character( shapiro.test(mns)$p.value)
+```
+The graphic above shows that the simulation density, in blue, is close to the normal, in red. This is confirmed by the Shapiro-Wilk test value of ```r shapiro```
+
+
+
